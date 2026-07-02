@@ -9,6 +9,8 @@ struct inode;
 struct file* file_open(struct inode*);
 struct file* file_reopen(struct file*);
 void file_close(struct file*);
+void file_ref_increment(struct file*);
+void file_ref_decrement_and_close(struct file*);
 struct inode* file_get_inode(struct file*);
 
 /* Reading and writing. */

@@ -145,6 +145,12 @@ bool pagedir_is_dirty(uint32_t* pd, const void* vpage) {
   return pte != NULL && (*pte & PTE_D) != 0;
 }
 
+/* Returns true if the virtual page at VADDR is writable. */
+bool pagedir_is_writable(uint32_t *pd, const void *vaddr) {
+  uint32_t *pte = lookup_page(pd, vaddr, false);
+  return pte != NULL && (*pte & PTE_W) != 0;
+}
+
 /* Set the dirty bit to DIRTY in the PTE for virtual page VPAGE
    in PD. */
 void pagedir_set_dirty(uint32_t* pd, const void* vpage, bool dirty) {
@@ -207,7 +213,7 @@ uint32_t* active_pd(void) {
   return ptov(pd);
 }
 
-/* Seom page table changes can cause the CPU's translation
+/* Some page table changes can cause the CPU's translation
    lookaside buffer (TLB) to become out-of-sync with the page
    table.  When this happens, we have to "invalidate" the TLB by
    re-activating it.

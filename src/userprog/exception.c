@@ -114,17 +114,10 @@ static void page_fault(struct intr_frame* f) {
   bool user;        /* True: access by user, false: access by kernel. */
   void* fault_addr; /* Fault address. */
 
-  /* Obtain faulting address, the virtual address that was
-     accessed to cause the fault.  It may point to code or to
-     data.  It is not necessarily the address of the instruction
-     that caused the fault (that's f->eip).
-     See [IA32-v2a] "MOV--Move to/from Control Registers" and
-     [IA32-v3a] 5.15 "Interrupt 14--Page Fault Exception
-     (#PF)". */
+  /* Obtain faulting address. */
   asm("movl %%cr2, %0" : "=r"(fault_addr));
 
-  /* Turn interrupts back on (they were only off so that we could
-     be assured of reading CR2 before it changed). */
+  /* Turn interrupts back on. */
   intr_enable();
 
   /* Count page faults. */
@@ -135,9 +128,16 @@ static void page_fault(struct intr_frame* f) {
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  /* To implement virtual memory, delete the rest of the function
-     body, and replace it with code that brings in the page to
-     which fault_addr refers. */
+  /* If the fault came from user access, terminate the process as expected by the tests. */
+  if (user) {
+      /* The user process accessed invalid memory, so report the failure and exit with -1. */
+      printf("%s: exit(-1)\n", thread_name());
+      thread_current()->pcb->exit_status = -1;
+      process_exit();
+      thread_exit();
+  }
+
+  /* A kernel-mode fault is a serious kernel bug. */
   printf("Page fault at %p: %s error %s page in %s context.\n", fault_addr,
          not_present ? "not present" : "rights violation", write ? "writing" : "reading",
          user ? "user" : "kernel");

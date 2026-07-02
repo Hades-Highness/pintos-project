@@ -8,6 +8,7 @@ struct file {
   struct inode* inode; /* File's inode. */
   off_t pos;           /* Current position. */
   bool deny_write;     /* Has file_deny_write() been called? */
+  int ref_count;       /* Number of open file descriptors / owners. */
 };
 
 /* Opens a file for the given INODE, of which it takes ownership,
@@ -19,6 +20,7 @@ struct file* file_open(struct inode* inode) {
     file->inode = inode;
     file->pos = 0;
     file->deny_write = false;
+    file->ref_count = 1;
     return file;
   } else {
     inode_close(inode);
@@ -31,6 +33,27 @@ struct file* file_open(struct inode* inode) {
    Returns a null pointer if unsuccessful. */
 struct file* file_reopen(struct file* file) {
   return file_open(inode_reopen(file->inode));
+}
+
+/* Increments the reference count of FILE. */
+void file_ref_increment(struct file* file) {
+  if (file != NULL) {
+    file->ref_count++;
+  }
+}
+
+/* Decrements the reference count of FILE and closes it when the last
+   reference goes away. */
+void file_ref_decrement_and_close(struct file* file) {
+  if (file == NULL) {
+    return;
+  }
+
+  ASSERT(file->ref_count > 0);
+  file->ref_count--;
+  if (file->ref_count <= 0) {
+    file_close(file);
+  }
 }
 
 /* Closes FILE. */
